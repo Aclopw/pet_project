@@ -2,12 +2,13 @@ syntax = "proto3";
 
 package sso;
 
+option go_package = "github.com/Aclopw/pet_project/protos/sso;proto";
 
 // Auth service definition
 service Auth {
   rpc Register (RegisterRequest) returns (RegisterResponse);
   rpc Login (LoginRequest) returns (LoginResponse);
-  rpc IsAdmin (IsAdminRequest) returns (IsAdminResponse);
+  rpc IsAdmin (IsAdminRequest) returns (IsAdminResponse);s
 }
 
 // Register
