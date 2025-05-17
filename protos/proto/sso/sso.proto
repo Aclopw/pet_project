@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package sso;
 
-option go_package = "tuzov.sso.v1;ssov1";
+option go_package = "user.sso.v1;ssov1";
 
 // Auth service definition
 service Auth {
