@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package sso;
 
-option go_package = "github.com/Aclopw/pet_project/protos/sso;proto";
+option go_package = "github.com/Aclopw/pet_project/tree/main/protos/proto/sso;sso";
 
 // Auth service definition
 service Auth {
