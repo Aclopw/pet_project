@@ -2,15 +2,19 @@ package main
 
 import (
 	"context"
-	"database/sql"
 	"fmt"
 	"log/slog"
 	"net/http"
 	"os"
 	"os/signal"
 	"sso/internal/lib/logger/sl"
+	"sso/internal/service/mail"
 	"syscall"
 	"time"
+
+	"sso/internal/http-server/handlers/user/register"
+	mwLogger "sso/internal/http-server/middleware/logger"
+	"sso/internal/service/token"
 
 	"sso/internal/storage/postgres"
 
@@ -37,24 +41,25 @@ func main() {
 
 	log.Info("logger initialized")
 
-	dbConn, err := postgres.NewPostgresSql(cfg.Storage)
+	storage, err := postgres.NewPostgresSql(cfg.Storage)
 	if err != nil {
 		log.Error("failed to connect to database", sl.Err(err))
 		os.Exit(1)
 	}
 
-	if err := initDB(dbConn); err != nil {
-		log.Error("failed to initialize database", sl.Err(err))
-		os.Exit(1)
-	}
+	token := token.New(cfg.JWTAccess, cfg.JWTRefresh)
+	mail := mail.New(log)
 
 	log.Info("database initialized")
 
 	router := chi.NewRouter()
 	router.Use(middleware.RequestID)
 	router.Use(middleware.Logger)
+	router.Use(mwLogger.New(log))
 	router.Use(middleware.Recoverer)
 	router.Use(middleware.URLFormat)
+
+	router.Post("/register", register.New(log, storage, mail, token))
 
 	// Middleware setup completed
 	log.Info("router initialized")
@@ -113,12 +118,4 @@ func setupLogger(env string) *slog.Logger {
 	}
 
 	return log
-}
-
-func initDB(db *sql.DB) error {
-	err := db.Ping()
-	if err != nil {
-		return fmt.Errorf("failed to connect to database: %w", err)
-	}
-	return nil
 }

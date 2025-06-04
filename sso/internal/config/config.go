@@ -11,6 +11,8 @@ import (
 type Config struct {
 	Env        string `yaml:"env" env-default:"local"`
 	Storage    string `yaml:"storage" env-required:"true"`
+	JWTAccess  string `yaml:"jwt_access_secret" env-required:"true"`
+	JWTRefresh string `yaml:"jwt_refresh_secret" env-required:"true"`
 	HTTPServer `yaml:"http_server"`
 }
 

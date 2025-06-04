@@ -1,1 +1,2 @@
 sso/config/config.yaml
+sso/internal/config/config.go
