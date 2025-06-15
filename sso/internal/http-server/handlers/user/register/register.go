@@ -120,6 +120,10 @@ func New(log *slog.Logger, userSaver Saver, mailService SendVerificationEmail, t
 			return
 		}
 
+		// Set the refresh token as a cookie.
+		cookie := http.Cookie{Name: "resfreshToken", Value: tokens["refresh_token"], Expires: cookieExpiration(), HttpOnly: true}
+		http.SetCookie(w, &cookie)
+
 		// Save the refresh token in storage.
 		if err := userSaver.SaveToken(userID, tokens["refresh_token"]); err != nil {
 			log.Error("failed to save token", sl.Err(err))
