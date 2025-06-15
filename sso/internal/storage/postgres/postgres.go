@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 
+	"sso/internal/domain/models"
 	"sso/internal/storage"
 
 	"github.com/lib/pq"
@@ -37,14 +38,14 @@ func (s *Storage) Close() error {
 	return nil
 }
 
-func (s *Storage) SaveUser(email, password, activationLink string) (int, error) {
+func (s *Storage) SaveUser(user *models.User) (int, error) {
 	const op = "storage.postgres.SaveUser"
 
 	stmt, err := s.db.Prepare("INSERT INTO users (email, password, activation_link) VALUES ($1, $2, $3);")
 	if err != nil {
 		return 0, fmt.Errorf("%s: %w", op, err)
 	}
-	_, err = stmt.Exec(email, password, activationLink)
+	_, err = stmt.Exec(user.Email, user.Password, user.ActivationLink)
 	if err != nil {
 		if pqErr, ok := err.(*pq.Error); ok && string(pqErr.Code) == RowAlreadyExists {
 			return 0, fmt.Errorf("%s: %w", op, storage.ErrUserAlreadyExists)

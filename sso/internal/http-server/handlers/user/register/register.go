@@ -5,6 +5,7 @@ import (
 	"io"
 	"log/slog"
 	"net/http"
+	"sso/internal/domain/models"
 	"sso/internal/lib/logger/sl"
 	"sso/internal/lib/random"
 	"time"
@@ -23,6 +24,13 @@ type Request struct {
 	Password string `json:"password" validate:"required,min=4,max=64"`
 }
 
+type Response struct {
+	resp.Response
+	models.UserDTO `json:"user,omitempty"`
+	AccessToken    string `json:"access_token,omitempty"`
+	RefreshToken   string `json:"refresh_token,omitempty"`
+}
+
 type SendVerificationEmail interface {
 	Send(email, activationLink string) error
 }
@@ -33,7 +41,7 @@ type TokenService interface {
 
 // TokenService abstracts token generation logic
 type Saver interface {
-	SaveUser(email, password string, activationLink string) (int, error)
+	SaveUser(user *models.User) (int, error)
 	SaveToken(userID int, token string) error
 }
 
@@ -88,8 +96,10 @@ func New(log *slog.Logger, userSaver Saver, mailService SendVerificationEmail, t
 
 		activationLink := random.NewRandomString(27)
 
+		user := models.User{Email: req.Email, Password: string(hashedPassword), TgUserID: "", ActivationLink: activationLink}
+
 		// Save the new user to the storage.
-		userID, err := userSaver.SaveUser(req.Email, string(hashedPassword), activationLink)
+		userID, err := userSaver.SaveUser(&user)
 		if err != nil {
 			if errors.Is(err, storage.ErrUserAlreadyExists) {
 				log.Error("user already exists", sl.Err(err))
@@ -97,7 +107,6 @@ func New(log *slog.Logger, userSaver Saver, mailService SendVerificationEmail, t
 				render.JSON(w, r, resp.Error("user already exists"))
 
 				return
-
 			}
 			log.Error("failed to save user", sl.Err(err))
 			render.JSON(w, r, resp.Error("internal error"))
@@ -133,12 +142,25 @@ func New(log *slog.Logger, userSaver Saver, mailService SendVerificationEmail, t
 			return
 		}
 
-		// Set the refresh token as a cookie.
-		cookie := http.Cookie{Name: "resfreshToken", Value: tokens["refresh_token"], Expires: cookieExpiration(), HttpOnly: true}
-		http.SetCookie(w, &cookie)
+		responesOk(w, r, models.UserDTO{
+			Email:       req.Email,
+			UserID:      userID,
+			IsActivated: false,
+		}, tokens)
 
-		render.JSON(w, r, resp.OK())
+		log.Info("user registered successfully", slog.String("email", req.Email), slog.Int("user_id", userID))
 	}
+}
+
+func responesOk(w http.ResponseWriter, r *http.Request, user models.UserDTO, tokens map[string]string) {
+	resp := Response{
+		Response:     resp.OK(),
+		UserDTO:      user,
+		AccessToken:  tokens["access_token"],
+		RefreshToken: tokens["refresh_token"],
+	}
+
+	render.JSON(w, r, resp)
 }
 
 // cookieExpiration returns the expiration time for the cookie (30 days from now)

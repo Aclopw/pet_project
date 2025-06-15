@@ -48,7 +48,7 @@ func main() {
 	}
 
 	token := token.New(cfg.JWTAccess, cfg.JWTRefresh)
-	mail := mail.New(log)
+	mail := mail.New(log, &cfg.MailServer)
 
 	log.Info("database initialized")
 

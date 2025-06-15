@@ -1,25 +1,49 @@
 package mail
 
-import "log/slog"
+import (
+	"log/slog"
+	"net/smtp"
+	"sso/internal/config"
+)
 
 type MailService struct {
-	log *slog.Logger
+	log        *slog.Logger
+	mailConfig *config.MailServer
 }
 
-func New(log *slog.Logger) *MailService {
+func New(log *slog.Logger, mailConfig *config.MailServer) *MailService {
 	return &MailService{
-		log: log,
+		log:        log,
+		mailConfig: mailConfig,
 	}
 }
 
 func (m *MailService) Send(email, activationLink string) error {
-	m.log.Info("sending verification email", slog.String("email", email), slog.String("activation_link", activationLink))
+	const op = "mail.MailService.Send"
 
-	// Here you would implement the actual email sending logic.
-	// For example, using an SMTP client or a third-party service.
+	m.log.Info("Sending verification email", slog.String("email", email), slog.String("activationLink", activationLink))
 
-	// Simulating email sending for demonstration purposes.
-	m.log.Info("verification email sent successfully", slog.String("email", email))
+	auth := smtp.PlainAuth(
+		"",
+		m.mailConfig.Username,
+		m.mailConfig.Password,
+		m.mailConfig.Host,
+	)
+
+	to := []string{email}
+
+	message := []byte(
+		"Subject: Verify your email\n" + "activation link: " + activationLink)
+
+	err := smtp.SendMail(m.mailConfig.Host, auth, m.mailConfig.Username, to, message)
+
+	if err != nil {
+		m.log.Error("%s: %w", op, err)
+
+		return err
+	}
+
+	m.log.Info("Verification email sent successfully", slog.String("email", email))
 
 	return nil
 }
