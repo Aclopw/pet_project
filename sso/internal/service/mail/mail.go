@@ -1,9 +1,11 @@
 package mail
 
 import (
+	"fmt"
 	"log/slog"
-	"net/smtp"
 	"sso/internal/config"
+
+	gomail "gopkg.in/mail.v2"
 )
 
 type MailService struct {
@@ -23,24 +25,16 @@ func (m *MailService) Send(email, activationLink string) error {
 
 	m.log.Info("Sending verification email", slog.String("email", email), slog.String("activationLink", activationLink))
 
-	auth := smtp.PlainAuth(
-		"",
-		m.mailConfig.Username,
-		m.mailConfig.Password,
-		m.mailConfig.Host,
-	)
+	msg := gomail.NewMessage()
+	msg.SetHeader("From", m.mailConfig.Username)
+	msg.SetHeader("To", email)
+	msg.SetHeader("Subject", "Please verify your email address")
+	msg.SetBody("text/plain", "Click the link to verify your email: "+activationLink)
 
-	to := []string{email}
+	dialer := gomail.NewDialer(m.mailConfig.Host, m.mailConfig.Port, m.mailConfig.Username, m.mailConfig.Password)
 
-	message := []byte(
-		"Subject: Verify your email\n" + "activation link: " + activationLink)
-
-	err := smtp.SendMail(m.mailConfig.Host, auth, m.mailConfig.Username, to, message)
-
-	if err != nil {
-		m.log.Error("%s: %w", op, err)
-
-		return err
+	if err := dialer.DialAndSend(msg); err != nil {
+		return fmt.Errorf("%s: %w", op, err)
 	}
 
 	m.log.Info("Verification email sent successfully", slog.String("email", email))
